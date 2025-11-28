@@ -1,0 +1,65 @@
+from telegram import ReplyKeyboardMarkup, KeyboardButton
+
+
+# МЕНЮ ПОЛЬЗОВАТЕЛЯ
+
+def get_main_menu():
+    keyboard = [
+        [KeyboardButton("📅 Программа"),KeyboardButton("❓ Задать вопрос")],
+        [KeyboardButton("👨‍💼 Текущий докладчик"),KeyboardButton("⭐ Подписаться")],
+        [KeyboardButton("💝 Поддержать проект")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+# МЕНЮ ДОКЛАДЧИКА
+def get_speaker_main_menu():
+    keyboard = [
+        [KeyboardButton("🎤 Панель докладчика"),KeyboardButton("👥 Режим слушателя")],
+        [KeyboardButton("📅 Программа")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+#МЕНЮ ОРГАНИЗАТОРА
+def get_organizer_main_menu():
+    keyboard = [
+        [KeyboardButton("👥 Добавить докладчика"), KeyboardButton("📅 Изменить программу")],
+        [KeyboardButton("📢 Сделать рассылку")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+#ПАНЕЛЬ ДОКЛАДЧИКА
+def get_speaker_dashboard_menu():
+    keyboard = [
+        [KeyboardButton("▶️ Начать выступление")],
+        [KeyboardButton("📋 Мои вопросы"), KeyboardButton("🏠 Главное меню")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+#ПАНЕЛЬ ОРГАНИЗАТОРА
+def get_organizer_panel_menu():
+    keyboard = [
+        [KeyboardButton("➕ Добавить доклад"), KeyboardButton("✏️ Изменить доклад"), KeyboardButton("🗑️ Удалить доклад")],
+        [KeyboardButton("🏠 Главное меню")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+def get_speaker_active_menu():
+    keyboard = [
+        [KeyboardButton("📋 Мои вопросы")],
+        [KeyboardButton("⏹️ Завершить выступление")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+def get_donate_menu():
+    keyboard = [
+        [KeyboardButton("💰 Donate 100₽"), KeyboardButton("💰 Donate 500₽")],
+        [KeyboardButton("💰 Donate 1000₽"), KeyboardButton("🎁 Произвольная сумма")],
+        [KeyboardButton("🏠 Главное меню")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
