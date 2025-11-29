@@ -133,13 +133,14 @@ def handle_organizer_buttons(update, context):
             reply_markup=get_organizer_panel_menu()
         )
     elif text == "📢 Сделать рассылку":
-        update.message.reply_text("📢 Здесь будет массовая рассылка")
-    elif text == "➕ Добавить доклад":
-        update.message.reply_text("➕ Добавление нового доклада")
-    elif text == "✏️ Изменить доклад":
-        update.message.reply_text("✏️ Изменение доклада")
-    elif text == "🗑️ Удалить доклад":
-        update.message.reply_text("🗑️ Удаление доклада")
+        update.message.reply_text("📢 Здесь будет массовая рассылка",
+            reply_markup=get_organizer_panel_menu())
+    elif text =="👥 Все":
+        update.message.reply_text("Будет предложено ввести текст рассылки")
+    elif text == "🎤 Докладчики":
+        update.message.reply_text("Будет предложено ввести текст рассылки")
+#    elif text == "🗑️ Удалить доклад":
+#        update.message.reply_text("🗑️ Удаление доклада")
     elif text == "🏠 Главное меню":
         update.message.reply_text("🏠 Главное меню", reply_markup=get_organizer_main_menu())
 
