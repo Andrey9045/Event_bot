@@ -2,8 +2,8 @@ import os
 import logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from dotenv import load_dotenv
-from .keyboards import get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu
-
+from keyboards import get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu
+from database import get_event_program
 
 user_roles = {}
 
@@ -59,11 +59,32 @@ def start(update, context):
         update.message.reply_text(welcome_text, reply_markup=get_main_menu())
 
 
+def show_program(update, context):
+    event, talks = get_event_program()
+    if event and talks:
+        program_text = f"📅{event.title}\n\n"
+        program_text += f"📖 {event.description}\n\n"
+        program_text += f"🗓 {event.date.strftime('%d.%m.%Y в %H:%M')}\n\n"
+        program_text += "🎤 Программа выступлений:\n\n"
+
+        for talk in talks:
+            program_text += f"{talk.queue}. {talk.title}\n"
+            program_text += f"👤 {talk.speaker}\n"
+            program_text += f"⏰ {talk.started_at.strftime('%H:%M') if talk.started_at else 'Время уточняется'}\n"
+            program_text += f"📝 {talk.description}\n\n"
+        update.message.reply_text(program_text)
+    else:
+        update.message.reply_text(
+            "📅 На данный момент нет активных мероприятий.\n"
+            "Следите за анонсами!"
+        )
+            
+        
 def handle_user_buttons(update, context):
     text = update.message.text    
     print(f"🔘 Пользователь нажал: {text}")
     if text == "📅 Программа":
-        update.message.reply_text("🗓 Здесь будет программа мероприятия!")
+        show_program(update, context)
     elif text == "❓ Задать вопрос":
         update.message.reply_text("❔ Здесь можно будет задать вопрос докладчику!")
     elif text == "👨‍💼 Текущий докладчик":
@@ -104,7 +125,7 @@ def handle_speaker_buttons(update, context, user_id):
             reply_markup=get_main_menu()
         )
     elif text == "📅 Программа":
-        update.message.reply_text("Программа")
+        show_program(update, context)
     elif text == "▶️ Начать выступление":
         update.message.reply_text(
             "🎤 Вы начали выступление!\n\n"
@@ -125,22 +146,13 @@ def handle_speaker_buttons(update, context, user_id):
 def handle_organizer_buttons(update, context):
     text = update.message.text
     print(f"🔘 Пользователь нажал: {text}")
-    if text == "👥 Добавить докладчика":
-        update.message.reply_text("➕ Здесь можно добавить докладчика")
-    elif text == "📅 Изменить программу":
-        update.message.reply_text(
-            "📅 Редактирование программы:",
-            reply_markup=get_organizer_panel_menu()
-        )
-    elif text == "📢 Сделать рассылку":
+    if text == "📢 Сделать рассылку":
         update.message.reply_text("📢 Здесь будет массовая рассылка",
             reply_markup=get_organizer_panel_menu())
     elif text =="👥 Все":
         update.message.reply_text("Будет предложено ввести текст рассылки")
     elif text == "🎤 Докладчики":
         update.message.reply_text("Будет предложено ввести текст рассылки")
-#    elif text == "🗑️ Удалить доклад":
-#        update.message.reply_text("🗑️ Удаление доклада")
     elif text == "🏠 Главное меню":
         update.message.reply_text("🏠 Главное меню", reply_markup=get_organizer_main_menu())
 
