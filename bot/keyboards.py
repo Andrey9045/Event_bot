@@ -62,3 +62,11 @@ def get_donate_menu():
         [KeyboardButton("🏠 Главное меню")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+def get_question_input_menu():
+    """Клавиатура при вводе вопроса"""
+    keyboard = [
+        [KeyboardButton("❌ Отменить")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)

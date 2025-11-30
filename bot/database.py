@@ -35,3 +35,47 @@ def get_event_program(event_id=None):
         return None, []
     except ObjectDoesNotExist:
         return None, []
+
+
+def get_current_speaker():
+    try:
+        current_talk = Talk.objects.filter(
+            started_at__isnull=False,
+            finished_at__isnull=True
+        ).first()
+        if current_talk:
+            return current_talk.speaker, current_talk.speaker_id
+        return None, None
+    except Exception as e:
+        print(f"Ошибка при получении текущего докладчика: {e}")
+        return None, None
+
+def create_question_for_current_speaker(question_text):
+    try:
+        current_talk = Talk.objects.filter(
+            started_at__isnull=False,
+            finished_at__isnull=True
+        ).first()  
+        if not current_talk:
+            return None, "Сейчас нет активных выступлений"
+        question = Question.objects.create(
+            talk=current_talk,
+            text=question_text
+        )
+        print(f"Создан вопрос для докладчика '{current_talk.speaker}': {question_text}")
+        return question, None
+    except Exception as e:
+        print(f"Ошибка при создании вопроса: {e}")
+        return None, "Ошибка при отправке вопроса"
+
+
+def is_talk_active():
+    try:
+        return Talk.objects.filter(
+                   started_at__isnull=False,
+        	       finished_at__isnull=True
+        	    ).exists()
+    except Exception as e:
+        print(f"Ошибка при проверке активного выступления: {e}")
+        return False
+
