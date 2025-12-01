@@ -153,7 +153,6 @@ def newsletter_second_response(update, context):
         event = Newsletter.objects.get(id=1).event
         for user in users:
             bot = telegram.Bot(token=BOT_TOKEN)
-            print(str(event.image))
             try:
                 with open(f'media/{str(event.image)}', 'rb') as image:
                     bot.send_photo(
@@ -166,6 +165,15 @@ def newsletter_second_response(update, context):
                     chat_id=user.chat_id,
                     text=create_newsletter_message(event)
                 )
+            except PermissionError:
+                try:
+                    bot.send_message(
+                        chat_id=user.chat_id,
+                        text=create_newsletter_message(event)
+                    )
+                except telegram.error.BadRequest as e:
+                    print(e)
+                    continue
             except telegram.error.BadRequest as e:
                 print(e)
                 continue
