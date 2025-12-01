@@ -3,7 +3,7 @@ import logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from dotenv import load_dotenv
 from keyboards import get_start_menu, get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu, get_question_input_menu
-from database import get_event_program, get_current_speaker, create_question_for_current_speaker, is_talk_active
+from database import get_event_program, get_current_speaker, create_question_for_current_speaker, is_talk_active, toggle_subscription
 from datacenter.models import User
 
 user_roles = {}
@@ -169,8 +169,8 @@ def handle_user_buttons(update, context):
         start_ask_question(update, context)
     elif text == "👨‍💼 Текущий докладчик":
         update.message.reply_text("🎤 Сейчас выступает: Тестовый докладчик")
-    elif text == "⭐ Подписаться":
-        update.message.reply_text("✅ Вы подписались на обновления!")
+    elif text == "⭐ Подписка":
+        toggle_subscription(user_id, update)
     elif text == "💝 Поддержать проект":
         update.message.reply_text(
             "💝 Поддержать развитие наших митапов!\n\n"
@@ -203,6 +203,8 @@ def handle_speaker_buttons(update, context, user_id):
             "🔁 Переключились в режим слушателя!",
             reply_markup=get_main_menu()
         )
+    elif text == "⭐ Подписка":
+        toggle_subscription(user_id, update)
     elif text == "🏠 Меню":
         update.message.reply_text("🏠 Меню", reply_markup=get_speaker_main_menu())
     elif text == "📅 Программа":

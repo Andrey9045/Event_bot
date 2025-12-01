@@ -4,8 +4,8 @@ from .models import User, Role, Talk, Event, Question
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('nickname', 'chat_id', 'role')
-    list_filter = ('role',)
+    list_display = ('nickname', 'chat_id', 'role', 'subscription')
+    list_filter = ('role', 'subscription')
     search_fields = ['nickname', 'chat_id']
     readonly_fields = ('chat_id', 'created_at')
 

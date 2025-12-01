@@ -17,6 +17,7 @@ class User(models.Model):
     nickname = models.CharField("Имя пользователя")
     chat_id = models.CharField("ChatID", max_length=50)
     role = models.ForeignKey(Role, verbose_name="Роль", on_delete=models.SET_DEFAULT, default=1, related_name="users")
+    subscription = models.BooleanField(("Подписан на рассылку"), default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

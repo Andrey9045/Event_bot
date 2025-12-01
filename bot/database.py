@@ -12,6 +12,17 @@ django.setup()
 from datacenter.models import User, Role, Event, Talk, Question
 
 
+def toggle_subscription(chat_id, update):
+    user = User.objects.get(chat_id=chat_id)
+    if user.subscription:
+        update.message.reply_text("❌ Вы отписались от обновлений!")
+        user.subscription = False
+    else:
+        update.message.reply_text("✅ Вы подписались на обновления!")
+        user.subscription = True
+    user.save()
+
+
 def get_current_event():
     try:
         event = Event.objects.filter(is_active=True).first()
