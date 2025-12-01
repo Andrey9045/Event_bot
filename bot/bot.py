@@ -1,11 +1,12 @@
 import os
 import logging
 import telegram
+import datetime
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 from dotenv import load_dotenv
 from keyboards import get_start_menu, get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu, get_question_input_menu, get_news_distribution_menu
-from database import get_event_program, get_current_speaker, create_question_for_current_speaker, is_talk_active, toggle_subscription
-from datacenter.models import User, Event, Newsletter
+from database import get_event_program, create_question_for_current_speaker, is_talk_active, toggle_subscription, get_questions_list, get_current_speaker
+from datacenter.models import User, Event, Newsletter, Talk
 
 load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN')
@@ -68,6 +69,7 @@ def start(update, context):
 
     welcome_text = f"""Привет, {user.first_name}! 👋
 Я бот для митапов 🤖
+С моей помощью вы сможете посмотреть программу мероприятия и задать вопрос ведущему\n
 Чтобы открыть меню нажми на кнопку 🏠 Меню или воспользуйся командой /menu"""
     update.message.reply_text(welcome_text, reply_markup=get_start_menu())
 
@@ -174,6 +176,49 @@ def newsletter_second_response(update, context):
     if answer == "❌ Отменить":
         update.message.reply_text("Возвращаемся в главное меню", reply_markup=get_organizer_main_menu())
     return ConversationHandler.END
+
+
+def start_talk(update, context):
+    if Talk.objects.filter(is_active=True).exists():
+        update.message.reply_text("Сейчас уже идёт чужое выступление")
+    else:
+        chat_id = update.effective_user.id
+        user_id = User.objects.get(chat_id=chat_id).id
+        talk = Talk.objects.filter(speaker_id=user_id, is_active=None).order_by('queue').first()
+        if talk:
+            talk.is_active = True
+            talk.started_at = datetime.datetime.now()
+            talk.save()
+            update.message.reply_text(
+                "🎤 Вы начали выступление!\n\n"
+                "Теперь слушатели могут задавать вам вопросы.",
+                reply_markup=get_speaker_active_menu()
+            )
+        else:
+            update.message.reply_text(
+                "У вас больше нет выступлений сегодня",
+                reply_markup=get_main_menu()
+            )
+
+
+def end_talk(update, context):
+    talk = Talk.objects.get(is_active=True)
+    talk.is_active = False
+    talk.finished_at = datetime.datetime.now()
+    talk.save()
+    update.message.reply_text(
+            "⏹️ Выступление завершено!\n"
+            "Вы вернулись в панель докладчика.",
+            reply_markup=get_speaker_dashboard_menu()  # ← Возвращаем обычную панель
+        )
+
+
+def get_questions(update, context):
+    questions = get_questions_list()
+    message = "Список вопросов к вашему выступлению\n\n"
+    for index, question in enumerate(questions, start=1):
+        message += f"{index}. {question}\n\n"
+    update.message.reply_text(message)
 
 
 def start_ask_question(update, context):
@@ -306,21 +351,23 @@ def handle_speaker_buttons(update, context, user_id):
     elif text == "📅 Программа":
         show_program(update, context)
     elif text == "▶️ Начать выступление":
-        update.message.reply_text(
-            "🎤 Вы начали выступление!\n\n"
-            "Теперь слушатели могут задавать вам вопросы.",
-            reply_markup=get_speaker_active_menu()
-        )
+        start_talk(update, context)
     elif text == "⏹️ Завершить выступление":
-        update.message.reply_text(
-            "⏹️ Выступление завершено!\n"
-            "Вы вернулись в панель докладчика.",
-            reply_markup=get_speaker_dashboard_menu()  # ← Возвращаем обычную панель
-        )
+        end_talk(update, context)
     elif text == "📋 Мои вопросы":
-        update.message.reply_text("❓ Здесь будут вопросы от слушателей")
+        get_questions(update, context)
     elif text == "🏠 Главное меню":
         update.message.reply_text("🏠 Главное меню", reply_markup=get_speaker_main_menu())
+    elif text == "❓ Задать вопрос":
+        start_ask_question(update, context)
+    elif text == "👨‍💼 Текущий докладчик":
+        update.message.reply_text(f"🎤 Сейчас выступает: {get_current_speaker()}")
+    elif text == "💝 Поддержать проект":
+        update.message.reply_text(
+            "💝 Поддержать развитие наших митапов!\n\n"
+            "Выберите сумму доната:",
+            reply_markup=get_donate_menu()
+        )
 
 
 def handle_organizer_buttons(update, context):

@@ -48,19 +48,6 @@ def get_event_program(event_id=None):
         return None, []
 
 
-def get_current_speaker():
-    try:
-        current_talk = Talk.objects.filter(
-            started_at__isnull=False,
-            finished_at__isnull=True
-        ).first()
-        if current_talk:
-            return current_talk.speaker, current_talk.speaker_id
-        return None, None
-    except Exception as e:
-        print(f"Ошибка при получении текущего докладчика: {e}")
-        return None, None
-
 def create_question_for_current_speaker(question_text):
     try:
         current_talk = Talk.objects.filter(
@@ -83,10 +70,28 @@ def create_question_for_current_speaker(question_text):
 def is_talk_active():
     try:
         return Talk.objects.filter(
-                   started_at__isnull=False,
-        	       finished_at__isnull=True
-        	    ).exists()
+            started_at__isnull=False,
+            finished_at__isnull=True
+        ).exists()
     except Exception as e:
         print(f"Ошибка при проверке активного выступления: {e}")
         return False
 
+
+def get_questions_list():
+    talk = Talk.objects.get(is_active=True)
+    questions_list = []
+    for question in talk.questions.all():
+        message = f"{question.created_at.time().isoformat(timespec='seconds')} — {question.text}"
+        questions_list.append(message)
+    return questions_list
+
+
+def get_current_speaker():
+    try:
+        talk = Talk.objects.get(is_active=True)
+        speaker = talk.speaker
+        message = f"{speaker} — {talk.title}"
+    except Talk.DoesNotExist:
+        message = "Никто"
+    return message

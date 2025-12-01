@@ -19,7 +19,7 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(Talk)
 class TalkAdmin(admin.ModelAdmin):
-    list_display = ('title', 'speaker', 'queue', 'event')
+    list_display = ('title', 'speaker', 'queue', 'event', 'is_active')
     search_fields = ('title', 'speaker', 'event', 'description', 'speaker_id')
     readonly_fields = ('started_at', 'finished_at')
     raw_id_fields = ('speaker_id',)

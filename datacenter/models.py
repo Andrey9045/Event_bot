@@ -52,6 +52,7 @@ class Talk(models.Model):
     description = models.TextField("Описание")
     queue = models.PositiveIntegerField("Порядок в расписании")
     event = models.ForeignKey(Event, verbose_name="Мероприятие", on_delete=models.CASCADE, null=True, related_name="talks")
+    is_active = models.BooleanField(("Активно?"), default=None, blank=True, null=True)
     started_at = models.DateTimeField("Начало выступления", auto_now=False, auto_now_add=False, blank=True, null=True)
     finished_at = models.DateTimeField("Начало выступления", auto_now=False, auto_now_add=False, blank=True, null=True)
 
