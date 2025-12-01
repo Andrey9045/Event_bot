@@ -2,14 +2,17 @@ import os
 import logging
 import telegram
 import datetime
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, PreCheckoutQueryHandler 
 from dotenv import load_dotenv
 from keyboards import get_start_menu, get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu, get_question_input_menu, get_news_distribution_menu
 from database import get_event_program, create_question_for_current_speaker, is_talk_active, toggle_subscription, get_questions_list, get_current_speaker
 from datacenter.models import User, Event, Newsletter, Talk
+from telegram import LabeledPrice
+
 
 load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN')
+PAYMENT_PROVIDER_TOKEN = os.getenv('PAYMENT_PROVIDER_TOKEN')
 user_roles = {}
 user_states = {}
 STATE_WAITING_MESSAGE = "waiting_message"
@@ -86,6 +89,79 @@ def menu(update, context):
     if role == "Пользователь":
         update.message.reply_text("Переходим в главное меню", reply_markup=get_main_menu())
 
+def donate(update, context):
+    if not PAYMENT_PROVIDER_TOKEN:
+        update.message.reply_text(
+            "💳 Система онлайн-платежей находится в настройке.\n\n"
+            "Для поддержки проекта вы можете:\n"
+            "• Перевести на карту:\n"
+            "• Использовать СБП:\n\n"
+            "Спасибо за понимание! ❤️"
+        )
+        logger.warning("Попытка доната при ненастроенном PAYMENT_PROVIDER_TOKEN")
+        return
+    chat_id = update.effective_chat.id
+    title = "Поддержка митапа"
+    description = "Ваша поддержка поможет развивать сообщество и проводить больше мероприятий!"
+    payload = "Donation"
+    if update.message.text == "💰 Donate 100₽":
+        amount = 10000
+        currency = "RUB"
+    elif update.message.text == "💰 Donate 500₽":
+        amount = 50000
+        currency = "RUB"
+    elif update.message.text == "💰 Donate 1000₽":
+        amount = 100000
+        currency = "RUB"
+    else:
+        logger.warning(f"Неизвестная сумма доната: {update.message.text}")
+        return
+    prices = [LabeledPrice("Поддержка проекта", amount)]
+    try:
+        context.bot.send_invoice(
+            chat_id=chat_id,
+            title=title,
+            description=description,
+            payload=payload,
+            provider_token=PAYMENT_PROVIDER_TOKEN,
+            currency=currency,
+            prices=prices,
+            start_parameter=f"donation_{amount}",
+            need_email=True,
+            need_phone_number=False,
+            is_flexible=False,
+            send_email_to_provider=True,
+            send_phone_number_to_provider=False
+        )
+        logger.info(f"Отправлен счет на {amount/100} {currency} пользователю {chat_id}")
+    except telegram.error.InvalidToken as e:
+        logger.error(f"Неверный PAYMENT_PROVIDER_TOKEN: {e}")
+        update.message.reply_text(
+            "❌ Ошибка настройки платежной системы.\n"
+            "Пожалуйста, сообщите об этом организаторам."
+        )
+    except Exception as e:
+        logger.error(f"Ошибка при отправке инвойса: {e}")
+        update.message.reply_text(
+            "😔 Извините, произошла ошибка при создании счета.\n"
+            "Попробуйте позже или свяжитесь с организаторами."
+        )
+
+def precheckout_callback(update, context):
+    query = update.pre_checkout_query
+    if query.invoice_payload != "Donation":
+        query.answer(ok=False, error_message="Что-то пошло не так...")
+    else:
+        query.answer(ok=True)
+
+
+def successful_payment_callback(update, context):
+    payment = update.message.successful_payment
+    update.message.reply_text(
+        "🎉 Спасибо за вашу поддержку!\n\n"
+        f"Мы получили ваш донат на сумму {payment.total_amount/100} {payment.currency}.\n"
+        "Ваши средства помогут развивать наше сообщество и проводить больше интересных мероприятий! ❤️"
+    )
 
 def show_program(update, context):
     event, talks = get_event_program()
@@ -318,14 +394,8 @@ def handle_user_buttons(update, context):
             "Выберите сумму доната:",
             reply_markup=get_donate_menu()
         )
-    if text == "💰 Donate 100₽":
-        update.message.reply_text("💳 Для доната 100₽ используйте: ...\nСпасибо за поддержку! ❤️")
-    elif text == "💰 Donate 500₽":
-        update.message.reply_text("💳 Для доната 500₽ используйте: ...\nСпасибо за поддержку! ❤️")
-    elif text == "💰 Donate 1000₽":
-        update.message.reply_text("💳 Для доната 1000₽ используйте: ...\nСпасибо за поддержку! ❤️")
-    elif text == "🎁 Произвольная сумма":
-        update.message.reply_text("💳 Для произвольной суммы используйте: ...\nЛюбая сумма поможет нашему сообществу! ❤️")
+    elif text in ["💰 Donate 100₽", "💰 Donate 500₽", "💰 Donate 1000₽"]:
+        donate(update, context)
     elif text == "🏠 Главное меню":
         update.message.reply_text("🏠 Главное меню", reply_markup=get_main_menu())
 
@@ -362,12 +432,6 @@ def handle_speaker_buttons(update, context, user_id):
         start_ask_question(update, context)
     elif text == "👨‍💼 Текущий докладчик":
         update.message.reply_text(f"🎤 Сейчас выступает: {get_current_speaker()}")
-    elif text == "💝 Поддержать проект":
-        update.message.reply_text(
-            "💝 Поддержать развитие наших митапов!\n\n"
-            "Выберите сумму доната:",
-            reply_markup=get_donate_menu()
-        )
 
 
 def handle_organizer_buttons(update, context):
@@ -442,6 +506,8 @@ def main():
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("menu", menu))
     dp.add_handler(MessageHandler(Filters.text, handle_buttons))
+    dp.add_handler(MessageHandler(Filters.successful_payment, successful_payment_callback))
+    dp.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     updater.start_polling()
     updater.idle()
 

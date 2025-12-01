@@ -74,7 +74,7 @@ def get_speaker_active_menu():
 def get_donate_menu():
     keyboard = [
         [KeyboardButton("💰 Donate 100₽"), KeyboardButton("💰 Donate 500₽")],
-        [KeyboardButton("💰 Donate 1000₽"), KeyboardButton("🎁 Произвольная сумма")],
+        [KeyboardButton("💰 Donate 1000₽")],
         [KeyboardButton("🏠 Главное меню")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
