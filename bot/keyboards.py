@@ -1,12 +1,19 @@
 from telegram import ReplyKeyboardMarkup, KeyboardButton
 
 
-# МЕНЮ ПОЛЬЗОВАТЕЛЯ
+# /start
+def get_start_menu():
+    keyboard = [
+        [KeyboardButton("🏠 Меню")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
+
+# МЕНЮ ПОЛЬЗОВАТЕЛЯ
 def get_main_menu():
     keyboard = [
-        [KeyboardButton("📅 Программа"),KeyboardButton("❓ Задать вопрос")],
-        [KeyboardButton("👨‍💼 Текущий докладчик"),KeyboardButton("⭐ Подписаться")],
+        [KeyboardButton("📅 Программа"), KeyboardButton("❓ Задать вопрос")],
+        [KeyboardButton("👨‍💼 Текущий докладчик"), KeyboardButton("⭐ Подписаться")],
         [KeyboardButton("💝 Поддержать проект")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -15,13 +22,13 @@ def get_main_menu():
 # МЕНЮ ДОКЛАДЧИКА
 def get_speaker_main_menu():
     keyboard = [
-        [KeyboardButton("🎤 Панель докладчика"),KeyboardButton("👥 Режим слушателя")],
+        [KeyboardButton("🎤 Панель докладчика"), KeyboardButton("👥 Режим слушателя")],
         [KeyboardButton("📅 Программа")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
-#МЕНЮ ОРГАНИЗАТОРА
+# МЕНЮ ОРГАНИЗАТОРА
 def get_organizer_main_menu():
     keyboard = [
         [KeyboardButton("📢 Сделать рассылку")]
@@ -29,7 +36,7 @@ def get_organizer_main_menu():
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
-#ПАНЕЛЬ ДОКЛАДЧИКА
+# ПАНЕЛЬ ДОКЛАДЧИКА
 def get_speaker_dashboard_menu():
     keyboard = [
         [KeyboardButton("▶️ Начать выступление")],

@@ -2,8 +2,9 @@ import os
 import logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from dotenv import load_dotenv
-from keyboards import get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu, get_question_input_menu
+from keyboards import get_start_menu, get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu, get_question_input_menu
 from database import get_event_program, get_current_speaker, create_question_for_current_speaker, is_talk_active
+from datacenter.models import User
 
 user_roles = {}
 user_states = {}
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_user_role(user_id):
+
     return user_roles.get(user_id, "user")
 
 
@@ -41,6 +43,7 @@ def set_role_speaker(update, context):
         reply_markup=get_speaker_main_menu()
     )
 
+
 def set_role_organizer(update, context):
     user_id = update.effective_user.id
     user_roles[user_id] = "organizer"
@@ -62,16 +65,27 @@ def set_role_user(update, context):
 def start(update, context):
     user = update.effective_user
     user_id = user.id
-    role = get_user_role(user_id)
-    welcome_text = f"""Привет, {user.first_name}! 👋
+    username = f"{user.first_name} {user.last_name}"
+    if not User.objects.filter(chat_id=user_id).exists():
+        User.objects.create(chat_id=user_id, nickname=username)
 
-Я бот для митапов 🤖"""
-    if role == "speaker":
-        update.message.reply_text(welcome_text, reply_markup=get_speaker_main_menu())
-    elif role == "organizer":
-        update.message.reply_text(welcome_text, reply_markup=get_organizer_main_menu())
-    else:   
-        update.message.reply_text(welcome_text, reply_markup=get_main_menu())
+    welcome_text = f"""Привет, {user.first_name}! 👋
+Я бот для митапов 🤖
+Чтобы открыть меню нажми на кнопку 🏠 Меню или воспользуйся командой /menu"""
+    update.message.reply_text(welcome_text, reply_markup=get_start_menu())
+
+
+def menu(update, context):
+    user = update.effective_user
+    user_id = user.id
+    role = User.objects.get(chat_id=user_id).role
+    role = str(role)
+    if role == "Докладчик":
+        update.message.reply_text("Переходим в меню докладчика", reply_markup=get_speaker_main_menu())
+    if role == "Администратор":
+        update.message.reply_text("Переходим в меню администратора", reply_markup=get_organizer_main_menu())
+    if role == "Пользователь":
+        update.message.reply_text("Переходим в главное меню", reply_markup=get_main_menu())
 
 
 def show_program(update, context):
@@ -93,7 +107,7 @@ def show_program(update, context):
             "📅 На данный момент нет активных мероприятий.\n"
             "Следите за анонсами!"
         )
-            
+
 
 def start_ask_question(update, context):
     user_id = update.effective_user.id
@@ -133,10 +147,11 @@ def handle_question_input(update, context):
             reply_markup=get_main_menu()  # ✅ Возврат в главное меню
         )
     clear_user_state(user_id)
-        
+
+
 def handle_user_buttons(update, context):
     text = update.message.text
-    user_id = update.effective_user.id    
+    user_id = update.effective_user.id
     print(f"🔘 Пользователь нажал: {text}")
     if text == "❌ Отменить":
         clear_user_state(user_id)
@@ -144,10 +159,12 @@ def handle_user_buttons(update, context):
         return
     user_state = get_user_state(user_id)
     if user_state == STATE_WAITING_QUESTION:
-        handle_question_input(update,context)
+        handle_question_input(update, context)
         return
     if text == "📅 Программа":
         show_program(update, context)
+    elif text == "🏠 Меню":
+        update.message.reply_text("🏠 Меню", reply_markup=get_main_menu())
     elif text == "❓ Задать вопрос":
         start_ask_question(update, context)
     elif text == "👨‍💼 Текущий докладчик":
@@ -169,8 +186,7 @@ def handle_user_buttons(update, context):
     elif text == "🎁 Произвольная сумма":
         update.message.reply_text("💳 Для произвольной суммы используйте: ...\nЛюбая сумма поможет нашему сообществу! ❤️")
     elif text == "🏠 Главное меню":
-    	update.message.reply_text("🏠 Главное меню", reply_markup=get_main_menu())
-
+        update.message.reply_text("🏠 Главное меню", reply_markup=get_main_menu())
 
 
 def handle_speaker_buttons(update, context, user_id):
@@ -184,9 +200,11 @@ def handle_speaker_buttons(update, context, user_id):
     elif text == "👥 Режим слушателя":
         user_roles[user_id] = "user"
         update.message.reply_text(
-            "🔁 Переключились в режим слушателя!", 
+            "🔁 Переключились в режим слушателя!",
             reply_markup=get_main_menu()
         )
+    elif text == "🏠 Меню":
+        update.message.reply_text("🏠 Меню", reply_markup=get_speaker_main_menu())
     elif text == "📅 Программа":
         show_program(update, context)
     elif text == "▶️ Начать выступление":
@@ -196,7 +214,7 @@ def handle_speaker_buttons(update, context, user_id):
             reply_markup=get_speaker_active_menu()
         )
     elif text == "⏹️ Завершить выступление":
-         update.message.reply_text(
+        update.message.reply_text(
             "⏹️ Выступление завершено!\n"
             "Вы вернулись в панель докладчика.",
             reply_markup=get_speaker_dashboard_menu()  # ← Возвращаем обычную панель
@@ -206,13 +224,16 @@ def handle_speaker_buttons(update, context, user_id):
     elif text == "🏠 Главное меню":
         update.message.reply_text("🏠 Главное меню", reply_markup=get_speaker_main_menu())
 
+
 def handle_organizer_buttons(update, context):
     text = update.message.text
     print(f"🔘 Пользователь нажал: {text}")
     if text == "📢 Сделать рассылку":
         update.message.reply_text("📢 Здесь будет массовая рассылка",
-            reply_markup=get_organizer_panel_menu())
-    elif text =="👥 Все":
+                                  reply_markup=get_organizer_panel_menu())
+    elif text == "🏠 Меню":
+        update.message.reply_text("🏠 Меню", reply_markup=get_organizer_main_menu())
+    elif text == "👥 Все":
         update.message.reply_text("Будет предложено ввести текст рассылки")
     elif text == "🎤 Докладчики":
         update.message.reply_text("Будет предложено ввести текст рассылки")
@@ -223,35 +244,38 @@ def handle_organizer_buttons(update, context):
 def handle_buttons(update, context):
     user_id = update.effective_user.id
     text = update.message.text
-    role = get_user_role(user_id)
+    role = User.objects.get(chat_id=user_id).role
+    role = str(role)
     user_state = get_user_state(user_id)
     if user_state == STATE_WAITING_QUESTION:
         handle_user_buttons(update, context)
         return
     print(f"🔘 Пользователь нажал: {text}")
-    #РЕЖИМ ЮЗЕРА
-    if role == "user":
-        handle_user_buttons(update, context)  
+    # РЕЖИМ ЮЗЕРА
+    if role == "Пользователь":
+        handle_user_buttons(update, context)
     # HT:BV CGBRTHF
-    elif role =="speaker":
+    elif role == "Докладчик":
         handle_speaker_buttons(update, context, user_id)
-    #РЕЖИМ ОРГАНИЗАТОРА
-    elif role == "organizer":
+    # РЕЖИМ ОРГАНИЗАТОРА
+    elif role == "Администратор":
         handle_organizer_buttons(update, context)
+
 
 def main():
     load_dotenv()
     BOT_TOKEN = os.getenv('BOT_TOKEN')
     updater = Updater(BOT_TOKEN, use_context=True)
-    dp=updater.dispatcher
+    dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("speaker", set_role_speaker))
-    dp.add_handler(CommandHandler("organizer", set_role_organizer))
-    dp.add_handler(CommandHandler("user", set_role_user))
+    dp.add_handler(CommandHandler("menu", menu))
+    # dp.add_handler(CommandHandler("speaker", set_role_speaker))
+    # dp.add_handler(CommandHandler("organizer", set_role_organizer))
+    # dp.add_handler(CommandHandler("user", set_role_user))
     dp.add_handler(MessageHandler(Filters.text, handle_buttons))
     updater.start_polling()
     updater.idle()
 
 
 if __name__ == '__main__':
-	main()
+    main()
