@@ -51,7 +51,7 @@ class Talk(models.Model):
     title = models.CharField("Название доклада")
     description = models.TextField("Описание")
     queue = models.PositiveIntegerField("Порядок в расписании")
-    event = models.ForeignKey(Event, verbose_name="Мероприятие", on_delete=models.CASCADE, null=True)
+    event = models.ForeignKey(Event, verbose_name="Мероприятие", on_delete=models.CASCADE, null=True, related_name="talks")
     started_at = models.DateTimeField("Начало выступления", auto_now=False, auto_now_add=False, blank=True, null=True)
     finished_at = models.DateTimeField("Начало выступления", auto_now=False, auto_now_add=False, blank=True, null=True)
 
@@ -75,3 +75,7 @@ class Question(models.Model):
 
     def __str__(self):
         return (f"Вопрос к {self.talk.title} {self.created_at}")
+
+
+class Newsletter(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)

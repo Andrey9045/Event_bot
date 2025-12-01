@@ -31,7 +31,8 @@ def get_speaker_main_menu():
 # МЕНЮ ОРГАНИЗАТОРА
 def get_organizer_main_menu():
     keyboard = [
-        [KeyboardButton("📢 Сделать рассылку")]
+        [KeyboardButton("📢 Сделать рассылку")],
+        [KeyboardButton("Обьявить о мероприятии")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -50,6 +51,13 @@ def get_organizer_panel_menu():
     keyboard = [
         [KeyboardButton("👥 Все"), KeyboardButton("🎤 Докладчики")],
         [KeyboardButton("🏠 Главное меню")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
+def get_news_distribution_menu():
+    keyboard = [
+        [KeyboardButton("✅ Подтвердить"), KeyboardButton("❌ Отменить")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 

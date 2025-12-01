@@ -1,14 +1,18 @@
 import os
 import logging
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+import telegram
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler
 from dotenv import load_dotenv
-from keyboards import get_start_menu, get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu, get_question_input_menu
+from keyboards import get_start_menu, get_main_menu, get_speaker_main_menu, get_organizer_main_menu, get_speaker_dashboard_menu, get_organizer_panel_menu, get_speaker_active_menu, get_donate_menu, get_question_input_menu, get_news_distribution_menu
 from database import get_event_program, get_current_speaker, create_question_for_current_speaker, is_talk_active, toggle_subscription
-from datacenter.models import User
+from datacenter.models import User, Event, Newsletter
 
+load_dotenv()
+BOT_TOKEN = os.getenv('BOT_TOKEN')
 user_roles = {}
 user_states = {}
 STATE_WAITING_QUESTION = "waiting_question"
+FIRST, SECOND = range(2)
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -104,9 +108,71 @@ def show_program(update, context):
         update.message.reply_text(program_text)
     else:
         update.message.reply_text(
-            "📅 На данный момент нет активных мероприятий.\n"
+            "📅 На данный момент нет активных мероприятий.\n\n"
             "Следите за анонсами!"
         )
+
+
+def create_newsletter_message(event):
+    list = ""
+    for index, talk in enumerate(event.talks.all(), start=1):
+        list += f"{index}. {talk.title} — {talk.speaker}\n\n"
+    message = f"""Здравствуйте,
+Приглашаем вас принять участие в новом мероприятии {event.title}
+Который будет проходить {event.date.date()} с {event.date.time()}\n
+{event.description}
+В программе мероприятия:\n
+{list}
+Будем рады видеть вас среди участников!
+    """
+    return message
+
+
+def newsletter(update, context):
+    update.message.reply_text("Введите id мероприятия по которому хотите сделать рассылку")
+    return FIRST
+
+
+def newsletter_first_response(update, context):
+    id = update.message.text
+    try:
+        event = Event.objects.get(id=id)
+    except Event.DoesNotExist:
+        update.message.reply_text("Мероприятия с таким id не существует")
+        return ConversationHandler.END
+    update.message.reply_text(f"Вы выбрали мероприятие: \n\n{event.title}", reply_markup=get_news_distribution_menu())
+    newsletter = Newsletter(id=1, event_id=id)
+    newsletter.save()
+    return SECOND
+
+
+def newsletter_second_response(update, context):
+    answer = update.message.text
+    if answer == "✅ Подтвердить":
+        users = User.objects.filter(subscription=True)
+        event = Newsletter.objects.get(id=1).event
+        for user in users:
+            bot = telegram.Bot(token=BOT_TOKEN)
+            print(str(event.image))
+            try:
+                with open(f'media/{str(event.image)}', 'rb') as image:
+                    bot.send_photo(
+                        chat_id=user.chat_id,
+                        photo=image,
+                        caption=create_newsletter_message(event),
+                        )
+            except ValueError:
+                bot.send_message(
+                    chat_id=user.chat_id,
+                    text=create_newsletter_message(event)
+                )
+            except telegram.error.BadRequest as e:
+                print(e)
+                continue
+        update.message.reply_text("Сообщения отправлены.\nВозвращаемся в главное меню", reply_markup=get_organizer_main_menu())
+    if answer == "❌ Отменить":
+        update.message.reply_text("Возвращаемся в главное меню", reply_markup=get_organizer_main_menu())
+    return ConversationHandler.END
 
 
 def start_ask_question(update, context):
@@ -241,6 +307,8 @@ def handle_organizer_buttons(update, context):
         update.message.reply_text("Будет предложено ввести текст рассылки")
     elif text == "🏠 Главное меню":
         update.message.reply_text("🏠 Главное меню", reply_markup=get_organizer_main_menu())
+    elif text == "Обьявить о мероприятии":
+        update.message.reply_text("Для обьявления о новом мероприятии используйте команду /newsletter")
 
 
 def handle_buttons(update, context):
@@ -265,10 +333,17 @@ def handle_buttons(update, context):
 
 
 def main():
-    load_dotenv()
-    BOT_TOKEN = os.getenv('BOT_TOKEN')
     updater = Updater(BOT_TOKEN, use_context=True)
+    newsletter_handler = ConversationHandler(
+        entry_points=[CommandHandler('newsletter', newsletter)],
+        states={
+            FIRST: [MessageHandler(Filters.text, newsletter_first_response)],
+            SECOND: [MessageHandler(Filters.text, newsletter_second_response, pass_user_data=True)],
+            },
+        fallbacks=[]
+    )
     dp = updater.dispatcher
+    dp.add_handler(newsletter_handler)
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("menu", menu))
     # dp.add_handler(CommandHandler("speaker", set_role_speaker))

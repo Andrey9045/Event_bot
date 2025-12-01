@@ -4,7 +4,7 @@ from .models import User, Role, Talk, Event, Question
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('nickname', 'chat_id', 'role', 'subscription')
+    list_display = ('id', 'nickname', 'chat_id', 'role', 'subscription')
     list_filter = ('role', 'subscription')
     search_fields = ['nickname', 'chat_id']
     readonly_fields = ('chat_id', 'created_at')
@@ -12,7 +12,7 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ('title', 'date', 'is_active')
+    list_display = ('id', 'title', 'date', 'is_active')
     list_filter = ['is_active']
     search_fields = ('title', 'description')
 
