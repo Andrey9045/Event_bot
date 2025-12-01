@@ -226,13 +226,13 @@ def start_ask_question(update, context):
     if not is_talk_active():
         update.message.reply_text("😔 Сейчас нет активных выступлений...")
         return
-    speaker_name, speaker_id = get_current_speaker()
-    if not speaker_name:
+    speaker_info = get_current_speaker()
+    if speaker_info == "Никто":
         update.message.reply_text("😔 Текущий докладчик не запустил поток вопросов...")
         return
     set_user_state(user_id, STATE_WAITING_QUESTION)
     update.message.reply_text(
-        f"🎤 Сейчас выступает: {speaker_name}\n\n"
+        f"🎤 Сейчас выступает: {speaker_info}\n\n"
         f"✍️ Напишите ваш вопрос для докладчика:",
         reply_markup=get_question_input_menu()  # ✅ Показывает кнопку "Отменить"
     )
@@ -240,21 +240,21 @@ def start_ask_question(update, context):
 
 def handle_question_input(update, context):
     user_id = update.effective_user.id
-    question_text = update.message.reply_text
+    question_text = update.message.text
     if question_text == "❌ Отменить":
         clear_user_state(user_id)
         update.message.reply_text("❌ Ввод вопроса отменен", reply_markup=get_main_menu())
         return
-    if not question_text:
+    if not question_text.strip():
         update.message.reply_text("❌ Вопрос не может быть пустым...")
         return
-    question, error = create_question_for_current_speaker(question_text, user_id)
+    question, error = create_question_for_current_speaker(question_text)
     if error:
         update.message.reply_text(f"❌ {error}", reply_markup=get_main_menu())
     else:
-        speaker_name, speaker_id = get_current_speaker()
+        speaker_info = get_current_speaker()
         update.message.reply_text(
-            f"✅ Ваш вопрос отправлен докладчику {speaker_name}!\n\n"
+            f"✅ Ваш вопрос отправлен докладчику {speaker_info}!\n\n"
             f"📝 Ваш вопрос: {question_text}",
             reply_markup=get_main_menu()  # ✅ Возврат в главное меню
         )

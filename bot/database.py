@@ -50,10 +50,7 @@ def get_event_program(event_id=None):
 
 def create_question_for_current_speaker(question_text):
     try:
-        current_talk = Talk.objects.filter(
-            started_at__isnull=False,
-            finished_at__isnull=True
-        ).first()  
+        current_talk = Talk.objects.filter(is_active=True).first() 
         if not current_talk:
             return None, "Сейчас нет активных выступлений"
         question = Question.objects.create(
@@ -69,10 +66,7 @@ def create_question_for_current_speaker(question_text):
 
 def is_talk_active():
     try:
-        return Talk.objects.filter(
-            started_at__isnull=False,
-            finished_at__isnull=True
-        ).exists()
+        return Talk.objects.filter(is_active=True).exists()
     except Exception as e:
         print(f"Ошибка при проверке активного выступления: {e}")
         return False
