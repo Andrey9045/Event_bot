@@ -11,6 +11,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 user_roles = {}
 user_states = {}
+STATE_WAITING_MESSAGE = "waiting_message"
 STATE_WAITING_QUESTION = "waiting_question"
 FIRST, SECOND = range(2)
 
@@ -22,8 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_user_role(user_id):
-
-    return user_roles.get(user_id, "user")
+    return user_roles.get(user_id)
 
 
 def set_user_state(user_id, state):
@@ -42,28 +42,21 @@ def clear_user_state(user_id):
 def set_role_speaker(update, context):
     user_id = update.effective_user.id
     user_roles[user_id] = "speaker"
-    update.message.reply_text(
-        "Теперь вы в роли ДОКЛАДЧИКА!",
-        reply_markup=get_speaker_main_menu()
-    )
 
 
 def set_role_organizer(update, context):
     user_id = update.effective_user.id
     user_roles[user_id] = "organizer"
-    update.message.reply_text(
-        "Теперь вы в роли ОРГАНИЗАТОРА!",
-        reply_markup=get_organizer_main_menu()
-    )
 
 
 def set_role_user(update, context):
     user_id = update.effective_user.id
     user_roles[user_id] = "user"
-    update.message.reply_text(
-        "Теперь вы в роли ПОЛЬЗОВАТЕЛЯ!",
-        reply_markup=get_main_menu()
-    )
+
+
+def clear_role(user_id):
+    if user_id in user_roles:
+        del user_roles[user_id]
 
 
 def start(update, context):
@@ -223,6 +216,35 @@ def handle_question_input(update, context):
     clear_user_state(user_id)
 
 
+def handle_message_input(update, context):
+
+    user_id = update.effective_user.id
+    message = update.message.text
+    bot = telegram.Bot(token=BOT_TOKEN)
+    role = get_user_role(user_id)
+    if role == "all":
+        users = User.objects.all()
+    else:
+        if role == "user":
+            users = User.objects.filter(role=1)
+        if role == "speaker":
+            users = User.objects.filter(role=2)
+        if role == "organizer":
+            users = User.objects.filter(role=3)
+    for user in users:
+        try:
+            bot.send_message(
+                chat_id=user.chat_id,
+                text=message
+                            )
+        except telegram.error.BadRequest as e:
+            print(e)
+            continue
+    update.message.reply_text("Сообщение разослано", reply_markup=get_organizer_main_menu())
+    clear_user_state(user_id)
+    clear_role(user_id)
+
+
 def handle_user_buttons(update, context):
     text = update.message.text
     user_id = update.effective_user.id
@@ -303,6 +325,12 @@ def handle_speaker_buttons(update, context, user_id):
 
 def handle_organizer_buttons(update, context):
     text = update.message.text
+    user_id = update.effective_user.id
+    user_state = get_user_state(user_id)
+    if user_state == STATE_WAITING_MESSAGE:
+        handle_message_input(update, context)
+        return
+
     print(f"🔘 Пользователь нажал: {text}")
     if text == "📢 Сделать рассылку":
         update.message.reply_text("📢 Здесь будет массовая рассылка",
@@ -310,9 +338,21 @@ def handle_organizer_buttons(update, context):
     elif text == "🏠 Меню":
         update.message.reply_text("🏠 Меню", reply_markup=get_organizer_main_menu())
     elif text == "👥 Все":
-        update.message.reply_text("Будет предложено ввести текст рассылки")
+        update.message.reply_text("Введите текст сообщения")
+        user_roles[user_id] = 'all'
+        set_user_state(user_id, STATE_WAITING_MESSAGE)
+    elif text == "Пользователи":
+        set_role_user(update, context)
+        update.message.reply_text("Введите текст сообщения")
+        set_user_state(user_id, STATE_WAITING_MESSAGE)
     elif text == "🎤 Докладчики":
-        update.message.reply_text("Будет предложено ввести текст рассылки")
+        set_role_speaker(update, context)
+        update.message.reply_text("Введите текст сообщения")
+        set_user_state(user_id, STATE_WAITING_MESSAGE)
+    elif text == "Администрация":
+        set_role_organizer(update, context)
+        update.message.reply_text("Введите текст сообщения")
+        set_user_state(user_id, STATE_WAITING_MESSAGE)
     elif text == "🏠 Главное меню":
         update.message.reply_text("🏠 Главное меню", reply_markup=get_organizer_main_menu())
     elif text == "Обьявить о мероприятии":
@@ -346,7 +386,7 @@ def main():
         entry_points=[CommandHandler('newsletter', newsletter)],
         states={
             FIRST: [MessageHandler(Filters.text, newsletter_first_response)],
-            SECOND: [MessageHandler(Filters.text, newsletter_second_response, pass_user_data=True)],
+            SECOND: [MessageHandler(Filters.text, newsletter_second_response)],
             },
         fallbacks=[]
     )
@@ -354,9 +394,6 @@ def main():
     dp.add_handler(newsletter_handler)
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("menu", menu))
-    # dp.add_handler(CommandHandler("speaker", set_role_speaker))
-    # dp.add_handler(CommandHandler("organizer", set_role_organizer))
-    # dp.add_handler(CommandHandler("user", set_role_user))
     dp.add_handler(MessageHandler(Filters.text, handle_buttons))
     updater.start_polling()
     updater.idle()

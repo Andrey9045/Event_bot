@@ -50,6 +50,7 @@ def get_speaker_dashboard_menu():
 def get_organizer_panel_menu():
     keyboard = [
         [KeyboardButton("👥 Все"), KeyboardButton("🎤 Докладчики")],
+        [KeyboardButton("Администрация"), KeyboardButton("Пользователи")],
         [KeyboardButton("🏠 Главное меню")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
